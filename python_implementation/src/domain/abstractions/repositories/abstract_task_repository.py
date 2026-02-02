@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from src.domain.entities.task import TaskEntity
+from src.domain.entities.task_entity import TaskEntity
+from src.domain.enums.task_enums import TaskStatus
+from src.config.constants import limit_default, offset_default
 
 class AbstractTaskRepository(ABC):
     @abstractmethod
@@ -12,7 +14,11 @@ class AbstractTaskRepository(ABC):
         pass
     
     @abstractmethod
-    def get_all(self, skip: int = 0, limit: int = 10) -> List[TaskEntity]:
+    def get_all(self, skip: int = offset_default, limit: int = limit_default, status: Optional[TaskStatus] = None) -> List[TaskEntity]:
+        pass
+    
+    @abstractmethod
+    def count(self, status: Optional[TaskStatus] = None) -> int:
         pass
     
     @abstractmethod

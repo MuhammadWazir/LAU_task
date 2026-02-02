@@ -3,6 +3,7 @@ from typing import Optional, List
 
 from src.domain.abstractions.repositories.abstract_task_repository import AbstractTaskRepository
 from src.domain.entities.task_entity import TaskEntity
+from src.domain.enums.task_enums import TaskStatus
 from src.infrastructure.database.models.task import Task
 from src.config.constants import limit_default, offset_default
 
@@ -24,8 +25,28 @@ class TaskRepository(AbstractTaskRepository):
         task = self.db.query(Task).filter(Task.task_id == task_id).first()
         return task
 
-    def get_all(self, skip: int = offset_default, limit: int = limit_default) -> List[TaskEntity]:
-        return self.db.query(Task).order_by(Task.created_at.desc()).offset(skip).limit(limit).all()
+    def get_all(
+        self, 
+        skip: int = offset_default, 
+        limit: int = limit_default,
+        status: Optional[TaskStatus] = None
+    ) -> List[TaskEntity]:
+        query = self.db.query(Task)
+        
+        # Apply status filter if provided
+        if status is not None:
+            query = query.filter(Task.status == status)
+        
+        return query.order_by(Task.created_at.desc()).offset(skip).limit(limit).all()
+    
+    def count(self, status: Optional[TaskStatus] = None) -> int:
+        """Count tasks with optional status filter"""
+        query = self.db.query(Task)
+        
+        if status is not None:
+            query = query.filter(Task.status == status)
+        
+        return query.count()
 
     def update(self, task: TaskEntity) -> Optional[TaskEntity]:
         db_task = self.get_by_id(task.task_id)

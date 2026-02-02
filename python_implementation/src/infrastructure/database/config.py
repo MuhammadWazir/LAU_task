@@ -1,16 +1,11 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from src.configs.config import load_settings
+from sqlalchemy.orm import declarative_base, sessionmaker
+from src.config.config import get_settings
 
-# Load settings
-settings = load_settings()
+settings = get_settings()
 
-# Create database engine
-engine = create_engine(settings.database_url)
+engine = create_engine(settings.DATABASE_URL)
 
-# Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for ORM models
 Base = declarative_base()
