@@ -21,6 +21,7 @@ services:
 
   api:
     build: .
+    #image: muhammadelwazir/task-api:latest
     container_name: task_api
     restart: always
     environment:
