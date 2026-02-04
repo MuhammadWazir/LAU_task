@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import Optional
+from uuid import UUID
 from dependency_injector.wiring import inject, Provide
 
 from src.application.dtos.task_dtos import CreateTaskRequest, TaskResponse, TaskListResponse
@@ -11,6 +12,7 @@ from src.application.use_cases.tasks.delete_task_use_case import DeleteTaskUseCa
 from src.domain.enums.task_enums import TaskStatus
 from src.container import Container
 from src.config.constants import limit_cap, limit_default, offset_default
+from src.domain.abstractions.cache.abstract_redis_cache import AbstractRedisCache
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -25,10 +27,12 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 @inject
 def create_task(
     request: CreateTaskRequest,
-    use_case: CreateTaskUseCase = Depends(Provide[Container.create_task_use_case])
+    use_case: CreateTaskUseCase = Depends(Provide[Container.create_task_use_case]),
+    cache: AbstractRedisCache = Depends(Provide[Container.cache])
 ) -> TaskResponse:
     try:
         task = use_case.execute(request)
+        cache.invalidate_pattern("tasks:*")
         return TaskResponse.model_validate(task)
     except ValueError as e:
         raise HTTPException(
@@ -53,21 +57,30 @@ def list_tasks(
     status_filter: Optional[TaskStatus] = Query(None, alias="status", description="Filter by task status"),
     limit: int = Query(limit_default, ge=1, le=limit_cap, description="Number of tasks to return (max 200)"),
     offset: int = Query(offset_default, ge=0, description="Number of tasks to skip"),
-    use_case: ListTasksUseCase = Depends(Provide[Container.list_tasks_use_case])
+    use_case: ListTasksUseCase = Depends(Provide[Container.list_tasks_use_case]),
+    cache: AbstractRedisCache = Depends(Provide[Container.cache])
 ) -> TaskListResponse:
     try:
+        cache_key = f"tasks:list:status={status_filter}:limit={limit}:offset={offset}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return TaskListResponse.model_validate(cached_data)
+
         tasks, total = use_case.execute(
             status=status_filter,
             limit=limit,
             offset=offset
         )
         
-        return TaskListResponse(
+        response = TaskListResponse(
             tasks=[TaskResponse.model_validate(task) for task in tasks],
             total=total,
             limit=limit,
             offset=offset
         )
+        
+        cache.set(cache_key, response.model_dump(mode='json'), ttl=10)
+        return response
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -83,7 +96,7 @@ def list_tasks(
 )
 @inject
 def get_task(
-    task_id: str,
+    task_id: UUID,
     use_case: GetTaskByIdUseCase = Depends(Provide[Container.get_task_by_id_use_case])
 ) -> TaskResponse:
     task = use_case.execute(task_id)
@@ -105,8 +118,9 @@ def get_task(
 )
 @inject
 def complete_task(
-    task_id: str,
-    use_case: CompleteTaskUseCase = Depends(Provide[Container.complete_task_use_case])
+    task_id: UUID,
+    use_case: CompleteTaskUseCase = Depends(Provide[Container.complete_task_use_case]),
+    cache: AbstractRedisCache = Depends(Provide[Container.cache])
 ) -> TaskResponse:
     task = use_case.execute(task_id)
     
@@ -116,6 +130,7 @@ def complete_task(
             detail=f"Task with id {task_id} not found"
         )
     
+    cache.invalidate_pattern("tasks:*")
     return TaskResponse.model_validate(task)
 
 
@@ -127,8 +142,9 @@ def complete_task(
 )
 @inject
 def delete_task(
-    task_id: str,
-    use_case: DeleteTaskUseCase = Depends(Provide[Container.delete_task_use_case])
+    task_id: UUID,
+    use_case: DeleteTaskUseCase = Depends(Provide[Container.delete_task_use_case]),
+    cache: AbstractRedisCache = Depends(Provide[Container.cache])
 ) -> None:
     success = use_case.execute(task_id)
     
@@ -137,3 +153,4 @@ def delete_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Task with id {task_id} not found"
         )
+    cache.invalidate_pattern("tasks:*")

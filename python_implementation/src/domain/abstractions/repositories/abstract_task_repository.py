@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
+from uuid import UUID
 from src.domain.entities.task_entity import TaskEntity
 from src.domain.enums.task_enums import TaskStatus
 from src.config.constants import limit_default, offset_default
@@ -10,7 +11,7 @@ class AbstractTaskRepository(ABC):
         pass
     
     @abstractmethod
-    def get_by_id(self, task_id: str) -> Optional[TaskEntity]:
+    def get_by_id(self, task_id: UUID) -> Optional[TaskEntity]:
         pass
     
     @abstractmethod
@@ -26,5 +27,5 @@ class AbstractTaskRepository(ABC):
         pass
     
     @abstractmethod
-    def delete(self, task_id: str) -> bool:
+    def delete(self, task_id: UUID) -> bool:
         pass

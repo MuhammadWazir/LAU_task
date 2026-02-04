@@ -7,11 +7,22 @@ from src.application.use_cases.tasks.list_tasks_use_case import ListTasksUseCase
 from src.application.use_cases.tasks.complete_task_use_case import CompleteTaskUseCase
 from src.application.use_cases.tasks.delete_task_use_case import DeleteTaskUseCase
 
+from src.infrastructure.cache.redis_cache import RedisCache
+from src.config.config import get_settings
+
 class Container(containers.DeclarativeContainer):
+    
+    settings = providers.Singleton(get_settings)
     
     db = providers.Factory(SessionLocal)
     
-    task_repository = providers.Singleton(
+    cache = providers.Singleton(
+        RedisCache,
+        host=settings().REDIS_HOST,
+        port=settings().REDIS_PORT
+    )
+    
+    task_repository = providers.Factory(
         TaskRepository,
         db=db
     )

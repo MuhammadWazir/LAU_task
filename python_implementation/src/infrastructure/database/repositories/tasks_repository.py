@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from uuid import UUID
 
 from src.domain.abstractions.repositories.abstract_task_repository import AbstractTaskRepository
 from src.domain.entities.task_entity import TaskEntity
@@ -21,7 +22,7 @@ class TaskRepository(AbstractTaskRepository):
         self.db.refresh(db_task)
         return db_task
 
-    def get_by_id(self, task_id: str) -> Optional[TaskEntity]:
+    def get_by_id(self, task_id: UUID) -> Optional[TaskEntity]:
         task = self.db.query(Task).filter(Task.task_id == task_id).first()
         return task
 
@@ -57,7 +58,7 @@ class TaskRepository(AbstractTaskRepository):
         self.db.refresh(db_task)
         return db_task
 
-    def delete(self, task_id: str) -> bool:
+    def delete(self, task_id: UUID) -> bool:
         db_task = self.get_by_id(task_id)
         if not db_task:
             return False
