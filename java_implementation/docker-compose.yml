@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: task_db_java
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysequel1!
+      POSTGRES_DB: task_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_java:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: task_redis_java
+    restart: always
+    ports:
+      - "6380:6379"
+
+  api:
+    build: .
+    image: muhammadelwazir/task-api-java:latest
+    container_name: task_api_java
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: mysequel1!
+      DB_NAME: task_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data_java:
